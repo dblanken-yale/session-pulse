@@ -3,11 +3,13 @@
 A Claude Code mod that puts a small band above the prompt whenever background work is running (background Bash, Monitor, async subagents, workflows). Each task gets a progress bar and a time-left estimate. `/pulse` opens a side pane that also shows each task's latest output line. The band clears about 15 seconds after the last task ends. Everything runs locally; nothing leaves the machine.
 
 ```
-◐ Checking repos         ████████▌───────  8/12 · ~40s left   1m 20s
-◓ Building assets        ██████──────────  40% · ~1m left       32s
+◐ Checking repos   █ █ █ █ █ █ █ █ ░ ░ ░ ░   8/12 · ~40s left   1m 20s
+◓ Building assets  █ █ █ █ █ █ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░   40% · ~1m left   32s
 ◑ Slow job                                 first run, no estimate yet  12s
 ✓ Lint · done in 18s
 ```
+
+Progress meters are drawn like the cache-buster bar: filled cells in green, the rest grey, one column apart. When the output says `N/M` with `M` up to 16 (8 in a narrow window), the meter has one cell per step. Otherwise it has 16 cells filled by percentage. The meter turns yellow when a task runs longer than its usual time, and the spinner is green. The `/pulse` pane shows each task's full label, not a clipped one.
 
 Based on Michael's session-pulse 0.3.2.
 
