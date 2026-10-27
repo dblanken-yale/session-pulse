@@ -556,9 +556,7 @@ export const register: Register = on => {
       rows.push(
         <Box flexDirection="column" marginBottom={1}>
           <Box flexDirection="row" justifyContent="space-between" columnGap={1}>
-            <Text bold wrap="truncate-end">
-              {clip(t.label, inner - 10)}
-            </Text>
+            <Text bold>{t.label}</Text>
             <Text dimColor>{fmt(at - t.startedAt)}</Text>
           </Box>
           <Box flexDirection="row" columnGap={1}>
