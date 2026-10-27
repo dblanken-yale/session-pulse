@@ -408,7 +408,7 @@ export const register: Register = on => {
   })
 
   // A turn a background task's notification starts carries its text, which
-  // also covers sessions where another plugin passes session.append by.
+  // says when the task ended (and a monitor's events arrive this way too).
   on('turn.start', async ($, e, next) => {
     try {
       if (!e.agentId && e.text.includes('<task-id>')) absorbNotification($, e.text)
@@ -439,42 +439,6 @@ export const register: Register = on => {
       // Bookkeeping failed: the call's own result still goes back untouched.
     }
     return ran
-  }).catch(($, e, next) => next(e))
-
-  // A background task's notification says when it ended (and a monitor's
-  // events arrive this way too). The row is read, never changed.
-  on('session.append', async ($, e, next) => {
-    try {
-      const kind = (e.origin as { kind?: string }).kind
-      const text = textOf(e.message.content)
-      if (kind === 'task-notification' || text.includes('<task-notification>')) {
-        absorbNotification($, text)
-      }
-    } catch {
-      // Only reading.
-    }
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  // At the end of each main turn the engine lists the work still in flight:
-  // anything tracked as running that is not on that list has ended.
-  on('classic.Stop', async ($, e, next) => {
-    try {
-      const live = e.background_tasks
-      if (Array.isArray(live)) {
-        const ids = new Set(live.map(t => t.id))
-        const list = await read($, bg)
-        for (const t of list) {
-          if (!t.endedAt && !ids.has(t.id) && Date.now() - t.startedAt > 5000) {
-            finishBg($, t.id, 'ended')
-            remember($, t.histKey, Date.now() - t.startedAt)
-          }
-        }
-      }
-    } catch {
-      // Only reading.
-    }
-    return next(e)
   }).catch(($, e, next) => next(e))
 
   // The band: one line per running task, then finished ones for a moment.

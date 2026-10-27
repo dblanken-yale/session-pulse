@@ -50,12 +50,11 @@ for i in $(seq 1 12); do echo "step $i/12"; sleep 5; done
 
 ## How a task is marked finished
 
-- a task notification arrives (`turn.start` / `session.append`)
-- the `Stop` hook's list of background tasks no longer includes it
+- a task notification starts a turn (`turn.start`)
 - for shells, `lsof` shows nothing holds the output file open (needs no hook, so it still works when another plugin's hook runs first)
 - subagents: the agent list reports it ended; monitors: their time limit passes
 
-On Team and Enterprise accounts the built-in `cc-plugin-sec-default` plugin runs ahead of every installed plugin and passes `session.append` and `Stop` straight past them, so Claude Code notes those two hooks as skipped. That is expected. The other paths above still mark tasks finished; a workflow may stay on the band until its notification starts a turn.
+The plugin does not hook `session.append` or `Stop`. On Team and Enterprise accounts the built-in `cc-plugin-sec-default` plugin passes those two straight past every plugin and Claude Code shows a "hook was skipped" notice, so leaving them out keeps that notice away. A workflow may stay on the band until its notification starts a turn.
 
 ## Development
 
