@@ -1,6 +1,6 @@
 {
   "name": "session-pulse",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "A band above the prompt while background work runs: a progress bar and time left per task. /pulse opens a side pane with each task's latest output.",
   "types": "./types/index.d.ts"
 }
