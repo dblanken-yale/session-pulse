@@ -500,7 +500,7 @@ export const register: Register = on => {
       rows.push(
         <Box key={t.id} flexDirection="row" columnGap={2}>
           <Text wrap="truncate-end">
-            <Text color="cyan">{spin} </Text>
+            <Text color="green">{spin} </Text>
             <Text bold>{clip(t.label, labelWidth)}</Text>
           </Text>
           {p.frac !== undefined ? meter(ui, p.frac, cells, p.late ? 'yellow' : 'green') : null}
