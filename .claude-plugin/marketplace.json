@@ -1,0 +1,11 @@
+{
+  "name": "session-pulse",
+  "owner": { "name": "dblanken-yale" },
+  "plugins": [
+    {
+      "name": "session-pulse",
+      "source": "./",
+      "description": "A band above the prompt while background work runs, with a progress bar per task. /pulse opens a side pane."
+    }
+  ]
+}
