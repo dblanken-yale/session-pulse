@@ -63,3 +63,35 @@ test('the band shows a background task, and the pane stays shut until /pulse', a
   }
 })
 
+
+test('a task notification that starts a turn marks the task finished', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'pulse' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  on('tool.call', () => ({
+    result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'b2' },
+    text: 'Output is being written to: /tmp/x/b2.output',
+  }))
+  on('turn.start', () => ({ turnId: 't1' }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'sleep 70', description: 'Short job', run_in_background: true })
+  await new Promise(r => setTimeout(r, 50))
+
+  const running = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await running.find({ type: 'Text', text: /Short job/ })).toBeDefined()
+  expect(await running.find({ type: 'Text', text: /completed in/ })).toBeUndefined()
+  await running.unmount()
+
+  await $.turn.start({
+    text: '<task-notification><task-id>b2</task-id><status>completed</status><summary>done</summary></task-notification>',
+  })
+  await new Promise(r => setTimeout(r, 50))
+
+  const ended = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await ended.find({ type: 'Text', text: /completed in/ })).toBeDefined()
+  await ended.unmount()
+})
