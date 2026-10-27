@@ -99,7 +99,7 @@ function median(xs: number[]): number {
 }
 
 // The last "3/7", "3 of 7" or "42%" in the output, as a fraction.
-function progressOf(lines: string[]): { frac: number; text: string } | undefined {
+function progressOf(lines: string[]): { frac: number; text: string; steps?: number } | undefined {
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i] ?? ''
     const pct = /(\d{1,3}(?:\.\d+)?)\s?%/.exec(line)
@@ -111,7 +111,7 @@ function progressOf(lines: string[]): { frac: number; text: string } | undefined
     if (of) {
       const a = Number(of[1])
       const b = Number(of[2])
-      if (b > 0 && a <= b) return { frac: a / b, text: `${a}/${b}` }
+      if (b > 0 && a <= b) return { frac: a / b, text: `${a}/${b}`, steps: b }
     }
   }
   return undefined
@@ -120,6 +120,8 @@ function progressOf(lines: string[]): { frac: number; text: string } | undefined
 type Progress = {
   /** 0..1 when known; undefined draws no bar. */
   frac?: number
+  /** Total steps when the output says "a/b": the meter draws one cell per step. */
+  steps?: number
   /** What sits after the bar: percent, time left, or why there is none. */
   text: string
   /** Running past its usual time: the meter turns yellow. */
@@ -133,7 +135,7 @@ function progress(t: PulseBg, at: number, hist: Record<string, number[]>): Progr
   const out = progressOf(t.tail)
   if (out && out.frac > 0) {
     const left = out.frac < 1 ? ` · ~${fmt((elapsed * (1 - out.frac)) / out.frac)} left` : ''
-    return { frac: out.frac, text: `${out.text}${left}` }
+    return { frac: out.frac, steps: out.steps, text: `${out.text}${left}` }
   }
   const past = hist[t.histKey]
   if (past && past.length > 0) {
@@ -151,7 +153,10 @@ type Ui = ReturnType<$['ui']['resolve']>
 
 // A meter like cache-buster's cache bar: filled cells in the task's colour,
 // the rest grey, one column between cells. It spans cells * 2 - 1 columns.
-function meter({ Box, Text }: Ui, frac: number, cells: number, color: 'green' | 'yellow') {
+// With a known step count that fits in `cells`, it draws one cell per step;
+// otherwise `cells` cells filled by percentage.
+function meter({ Box, Text }: Ui, frac: number, cells: number, color: 'green' | 'yellow', steps?: number) {
+  if (steps && steps <= cells) cells = steps
   const filled = Math.round(Math.min(1, Math.max(0, frac)) * cells)
   return (
     <Box gap={1}>
@@ -503,7 +508,7 @@ export const register: Register = on => {
             <Text color="green">{spin} </Text>
             <Text bold>{clip(t.label, labelWidth)}</Text>
           </Text>
-          {p.frac !== undefined ? meter(ui, p.frac, cells, p.late ? 'yellow' : 'green') : null}
+          {p.frac !== undefined ? meter(ui, p.frac, cells, p.late ? 'yellow' : 'green', p.steps) : null}
           <Text dimColor wrap="truncate-end">{p.text}</Text>
           <Box flexGrow={1} />
           <Text dimColor>{fmt(at - t.startedAt)}</Text>
@@ -558,7 +563,7 @@ export const register: Register = on => {
           </Box>
           <Box flexDirection="row" columnGap={1}>
             {p.frac !== undefined ? (
-              meter(ui, p.frac, Math.max(4, Math.min(CELLS, Math.floor((inner - 20) / 2))), p.late ? 'yellow' : 'green')
+              meter(ui, p.frac, Math.max(4, Math.min(CELLS, Math.floor((inner - 20) / 2))), p.late ? 'yellow' : 'green', p.steps)
             ) : (
               <Text dimColor>{t.status} ·</Text>
             )}
