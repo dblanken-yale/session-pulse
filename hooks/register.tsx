@@ -17,7 +17,9 @@ const TICK_MS = 2000
 const LINGER_MS = 15_000
 const HISTORY_KEY = 'history'
 const HISTORY_RUNS = 6
-const BAR_WIDTH = 16
+// Cells in a progress meter, drawn like cache-buster's: one coloured
+// cell per step, a column apart.
+const CELLS = 16
 // Running tasks drawn in the band before the rest fold into "+N more".
 const BAND_TASKS = 3
 const MONITOR_DEFAULT_TIMEOUT = 300_000
@@ -120,6 +122,8 @@ type Progress = {
   frac?: number
   /** What sits after the bar: percent, time left, or why there is none. */
   text: string
+  /** Running past its usual time: the meter turns yellow. */
+  late?: boolean
 }
 
 // Progress from the task's own output first, then from how long it usually
@@ -137,22 +141,27 @@ function progress(t: PulseBg, at: number, hist: Record<string, number[]>): Progr
     if (elapsed < usual) {
       return { frac: elapsed / usual, text: `~${fmt(usual - elapsed)} left (usually ${fmt(usual)})` }
     }
-    return { frac: 0.99, text: `longer than usual (${fmt(usual)})` }
+    return { frac: 0.99, text: `longer than usual (${fmt(usual)})`, late: true }
   }
   if (t.limitMs) return { text: `times out at ${fmt(t.limitMs)}` }
   return { text: 'first run, no estimate yet' }
 }
 
-// A bar in eighths of a cell, so short tasks still move every step. The
-// filled part and the track come back apart, to colour them apart.
-const EIGHTHS = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉']
-function bar(frac: number, width = BAR_WIDTH): { fill: string; track: string } {
-  const f = Math.min(1, Math.max(0, frac))
-  const eighths = Math.round(f * width * 8)
-  const full = Math.floor(eighths / 8)
-  const part = EIGHTHS[eighths % 8] ?? ''
-  const fill = '█'.repeat(full) + part
-  return { fill, track: '─'.repeat(Math.max(0, width - full - (part ? 1 : 0))) }
+type Ui = ReturnType<$['ui']['resolve']>
+
+// A meter like cache-buster's cache bar: filled cells in the task's colour,
+// the rest grey, one column between cells. It spans cells * 2 - 1 columns.
+function meter({ Box, Text }: Ui, frac: number, cells: number, color: 'green' | 'yellow') {
+  const filled = Math.round(Math.min(1, Math.max(0, frac)) * cells)
+  return (
+    <Box gap={1}>
+      {Array.from({ length: cells }, (_, i) => (
+        <Text key={`cell${i}`} backgroundColor={i < filled ? color : 'gray'}>
+          {' '}
+        </Text>
+      ))}
+    </Box>
+  )
 }
 
 const SPIN = ['◐', '◓', '◑', '◒']
@@ -475,30 +484,26 @@ export const register: Register = on => {
     const finished = tasks.filter(t => t.endedAt && at - t.endedAt <= LINGER_MS)
     if (running.length === 0 && finished.length === 0) return below
 
-    const { Box, Text } = $.ui.resolve(e)
+    const ui = $.ui.resolve(e)
+    const { Box, Text } = ui
     const hist = await read($, history)
     const cols = Math.max(30, e.props.bodyColumns)
     const narrow = cols < 70
-    const barWidth = narrow ? 8 : BAR_WIDTH
+    const cells = narrow ? 8 : CELLS
+    const barWidth = cells * 2 - 1
     const labelWidth = Math.max(12, Math.min(40, cols - barWidth - 34))
     const spin = SPIN[Math.floor(at / TICK_MS) % SPIN.length]
 
     const rows: RenderChildren[] = []
     for (const t of running.slice(0, BAND_TASKS)) {
       const p = progress(t, at, hist)
-      const b = p.frac !== undefined ? bar(p.frac, barWidth) : undefined
       rows.push(
         <Box key={t.id} flexDirection="row" columnGap={2}>
           <Text wrap="truncate-end">
             <Text color="cyan">{spin} </Text>
             <Text bold>{clip(t.label, labelWidth)}</Text>
           </Text>
-          {b ? (
-            <Text>
-              <Text color="green">{b.fill}</Text>
-              <Text dimColor>{b.track}</Text>
-            </Text>
-          ) : null}
+          {p.frac !== undefined ? meter(ui, p.frac, cells, p.late ? 'yellow' : 'green') : null}
           <Text dimColor wrap="truncate-end">{p.text}</Text>
           <Box flexGrow={1} />
           <Text dimColor>{fmt(at - t.startedAt)}</Text>
@@ -529,7 +534,8 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const ui = $.ui.resolve(e)
+    const { Box, Text } = ui
     const at = (await read($, now)) || Date.now()
     const tasks = await read($, bg)
     const hist = await read($, history)
@@ -550,17 +556,14 @@ export const register: Register = on => {
             </Text>
             <Text dimColor>{fmt(at - t.startedAt)}</Text>
           </Box>
-          <Text wrap="truncate-end">
+          <Box flexDirection="row" columnGap={1}>
             {p.frac !== undefined ? (
-              <Text>
-                <Text color="green">{bar(p.frac).fill}</Text>
-                <Text dimColor>{bar(p.frac).track} </Text>
-              </Text>
+              meter(ui, p.frac, Math.max(4, Math.min(CELLS, Math.floor((inner - 20) / 2))), p.late ? 'yellow' : 'green')
             ) : (
-              <Text dimColor>{t.status} · </Text>
+              <Text dimColor>{t.status} ·</Text>
             )}
-            <Text dimColor>{p.text}</Text>
-          </Text>
+            <Text dimColor wrap="truncate-end">{p.text}</Text>
+          </Box>
           {last ? (
             <Text dimColor wrap="truncate-end">
               {'› '}
