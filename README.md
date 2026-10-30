@@ -38,7 +38,7 @@ Requires a Claude Code build with mod hooks support, and `lsof` on the PATH (mac
 In order of preference:
 
 1. **The task's own output.** The last `3/7`, `3 of 7`, or `42%` in its output becomes the bar, and time left is worked out from the pace so far.
-2. **Past runs.** The last 6 durations per command are stored; the median becomes "~Xs left (usually Ys)".
+2. **Past runs.** The last 6 durations per command are stored; the median becomes "usually Ys", and the bar fills toward it. The count-up on the right shows how close the task is, and it may run past the estimate.
 3. **A time limit.** A Monitor task with a timeout shows "times out at 5m".
 4. Otherwise: "first run, no estimate yet".
 

@@ -141,7 +141,7 @@ function progress(t: PulseBg, at: number, hist: Record<string, number[]>): Progr
   if (past && past.length > 0) {
     const usual = median(past)
     if (elapsed < usual) {
-      return { frac: elapsed / usual, text: `~${fmt(usual - elapsed)} left (usually ${fmt(usual)})` }
+      return { frac: elapsed / usual, text: `usually ${fmt(usual)}` }
     }
     return { frac: 0.99, text: `longer than usual (${fmt(usual)})`, late: true }
   }
